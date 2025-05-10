@@ -24,17 +24,19 @@ const contract = new ethers.Contract(
   provider
 );
 
-// 🟢 Emoji generator for hype
+// 🟢 Generate emoji based on ETH
 function hypeEmojis(ethAmount) {
   const count = Math.floor(parseFloat(ethAmount) / 0.01);
   return "🟢".repeat(Math.min(count, 300));
 }
 
-// 🔔 Listen for actual buys
+// 📡 Listen for buys
 contract.on("TokensPurchased", async (buyer, amount) => {
   try {
-    const ethValue = (parseFloat(amount.toString()) * parseFloat(process.env.TOKEN_PRICE)) / 1e18 / 2345;
-    const ethFormatted = ethValue.toFixed(4);
+    const eth = amount
+      .mul(ethers.constants.WeiPerEther)
+      .div(ethers.BigNumber.from(process.env.TOKEN_PRICE));
+    const ethFormatted = ethers.utils.formatEther(eth);
     const isWhale = parseFloat(ethFormatted) >= WHALE_THRESHOLD_ETH;
 
     const baseMsg = isWhale
@@ -56,16 +58,16 @@ contract.on("TokensPurchased", async (buyer, amount) => {
   }
 });
 
-// 🔍 Debug: log any raw event from contract
-contract.on("*", (...args) => {
-  console.log("📡 Raw contract event detected:", args);
-});
+// Optional: Debug raw events
+// contract.on("*", (...args) => {
+//   console.log("📡 Raw contract event:", args);
+// });
 
-// 🌐 Keep server alive (for Render)
+// 🌐 Keep-alive server for Render
 app.get("/", (req, res) => {
-  res.send("Nanora Buy Bot is live.");
+  res.send("🟢 Nanora Buy Bot is live.");
 });
 
 app.listen(PORT, () => {
-  console.log(`🌐 HTTP server running on port ${PORT}`);
+  console.log(`🌐 Web server running on port ${PORT}`);
 });
