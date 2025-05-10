@@ -8,8 +8,7 @@ const PORT = process.env.PORT || 3000;
 
 // === CONFIG ===
 const WHALE_THRESHOLD_ETH = 2;
-const BUY_GIF =
-  "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExczB3czhjY2t6NTBobzd0ZmJicmVzNDVyeXU5ZGYwcHZyeDJvYnRxbyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/tXLpxypfSXvUc/giphy.gif";
+const BUY_GIF = "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExczB3czhjY2t6NTBobzd0ZmJicmVzNDVyeXU5ZGYwcHZyeDJvYnRxbyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/tXLpxypfSXvUc/giphy.gif";
 
 console.log("DEBUG: BOT_TOKEN =", process.env.BOT_TOKEN);
 console.log("DEBUG: CHAT_ID =", process.env.CHAT_ID);
@@ -30,13 +29,15 @@ function hypeEmojis(ethAmount) {
   return "🟢".repeat(Math.min(count, 300));
 }
 
-// 🔔 BUY ALERT HANDLER
+// 🟢 Handle Presale Buys
 contract.on("TokensPurchased", async (buyer, amount) => {
   try {
-    const tokenPrice = ethers.BigNumber.from(process.env.TOKEN_PRICE); // in wei
-    const ethSpent = amount.div(tokenPrice); // result in wei
-    const ethFormatted = ethers.utils.formatEther(ethSpent); // result in ETH string
+    // Correct calculation: (tokenAmount * tokenPrice in wei) / 1e18
+    const ethSpent = amount
+      .mul(ethers.BigNumber.from(process.env.TOKEN_PRICE))
+      .div(ethers.constants.WeiPerEther);
 
+    const ethFormatted = ethers.utils.formatEther(ethSpent);
     const isWhale = parseFloat(ethFormatted) >= WHALE_THRESHOLD_ETH;
 
     const baseMsg = isWhale
@@ -52,15 +53,15 @@ contract.on("TokensPurchased", async (buyer, amount) => {
       caption: fullMsg
     });
 
-    console.log("✅ Buy alert sent!");
+    console.log("✅ Buy alert sent!", buyer, ethFormatted);
   } catch (err) {
     console.error("❌ Error sending buy alert:", err.message);
   }
 });
 
-// 🟢 HTTP keep-alive (for Render)
+// 🌐 Keep Render alive
 app.get("/", (req, res) => {
-  res.send("🟢 Nanora Buy Bot is live");
+  res.send("🟢 Nanora Buy Bot is running");
 });
 
 app.listen(PORT, () => {
