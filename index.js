@@ -6,9 +6,10 @@ const express = require("express");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Config
+// === CONFIG ===
 const WHALE_THRESHOLD_ETH = 2;
-const BUY_GIF = "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExczB3czhjY2t6NTBobzd0ZmJicmVzNDVyeXU5ZGYwcHZyeDJvYnRxbyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/tXLpxypfSXvUc/giphy.gif";
+const BUY_GIF =
+  "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExczB3czhjY2t6NTBobzd0ZmJicmVzNDVyeXU5ZGYwcHZyeDJvYnRxbyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/tXLpxypfSXvUc/giphy.gif";
 
 console.log("DEBUG: BOT_TOKEN =", process.env.BOT_TOKEN);
 console.log("DEBUG: CHAT_ID =", process.env.CHAT_ID);
@@ -16,7 +17,6 @@ console.log("DEBUG: RPC_URL =", process.env.RPC_URL);
 console.log("DEBUG: CONTRACT_ADDRESS =", process.env.CONTRACT_ADDRESS);
 console.log("DEBUG: TOKEN_PRICE =", process.env.TOKEN_PRICE);
 
-// Ethers provider + contract
 const provider = new ethers.providers.JsonRpcProvider(process.env.RPC_URL);
 const contract = new ethers.Contract(
   process.env.CONTRACT_ADDRESS,
@@ -24,19 +24,19 @@ const contract = new ethers.Contract(
   provider
 );
 
-// 🟢 Generate emoji based on ETH
+// 🔁 Generate hype based on ETH
 function hypeEmojis(ethAmount) {
   const count = Math.floor(parseFloat(ethAmount) / 0.01);
   return "🟢".repeat(Math.min(count, 300));
 }
 
-// 📡 Listen for buys
+// 🔔 BUY ALERT HANDLER
 contract.on("TokensPurchased", async (buyer, amount) => {
   try {
-    const eth = amount
-      .mul(ethers.constants.WeiPerEther)
-      .div(ethers.BigNumber.from(process.env.TOKEN_PRICE));
-    const ethFormatted = ethers.utils.formatEther(eth);
+    const tokenPrice = ethers.BigNumber.from(process.env.TOKEN_PRICE); // in wei
+    const ethSpent = amount.div(tokenPrice); // result in wei
+    const ethFormatted = ethers.utils.formatEther(ethSpent); // result in ETH string
+
     const isWhale = parseFloat(ethFormatted) >= WHALE_THRESHOLD_ETH;
 
     const baseMsg = isWhale
@@ -58,14 +58,9 @@ contract.on("TokensPurchased", async (buyer, amount) => {
   }
 });
 
-// Optional: Debug raw events
-// contract.on("*", (...args) => {
-//   console.log("📡 Raw contract event:", args);
-// });
-
-// 🌐 Keep-alive server for Render
+// 🟢 HTTP keep-alive (for Render)
 app.get("/", (req, res) => {
-  res.send("🟢 Nanora Buy Bot is live.");
+  res.send("🟢 Nanora Buy Bot is live");
 });
 
 app.listen(PORT, () => {
