@@ -1,77 +1,68 @@
 require('dotenv').config();
-const Web3 = require('web3');
 const TelegramBot = require('node-telegram-bot-api');
-const axios = require('axios');
+const Web3 = require('web3');
 
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
-const web3 = new Web3(new Web3.providers.HttpProvider(process.env.RPC_URL));
-const CHAT_ID = process.env.CHAT_ID;
-const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS.toLowerCase();
-const TOKEN_DECIMALS = parseInt(process.env.TOKEN_DECIMALS) || 18;
+// === CONFIG ===
+const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
+const web3 = new Web3(process.env.RPC_URL); // ✅ FIXED
+const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
+const CHAT_ID = -1001725960763; // Nanora group ID
+const TOKEN_DECIMALS = 18;
+const TOKEN_PRICE = BigInt(process.env.TOKEN_PRICE); // in Wei
+let lastCheckedBlock = 0;
 
-let lastBlock = 0;
-
-// Stay alive by reacting to group messages
+// === KEEP BOT ALIVE WITH GROUP ACTIVITY ===
 bot.on('message', (msg) => {
-  if (msg.chat && msg.chat.id == CHAT_ID) {
-    console.log("👀 Group is active, staying alive...");
+  if (msg.chat && msg.chat.id === CHAT_ID && msg.text) {
+    console.log(`⏳ Keep-alive from ${msg.from.username || msg.from.first_name}`);
   }
 });
 
-// Manual /testbuy command
-bot.onText(/\/testbuy (\d+(\.\d+)?)/, async (msg, match) => {
-  const ethAmount = match[1];
-  const fromAddress = "0xFAKEBUY1234567890ABCDEF"; // Simulated address
+// === /testbuy command ===
+bot.onText(/\/testbuy/, async (msg) => {
+  const testFrom = "0xTESTWALLET1234567890abcdef";
+  const testAmount = "0.003";
+  const nanoAmount = (parseFloat(testAmount) * 3700 / 0.00075).toFixed(2);
 
-  const message = `🚀 *New Buy (Test)*\n👤 [${fromAddress}](https://etherscan.io/address/${fromAddress})\n💰 *${ethAmount} ETH* worth of $NANO`;
+  const testMessage = `🚀 *New Buy:*\n👤 [${testFrom}](https://etherscan.io/address/${testFrom})\n💰 *${testAmount} ETH* worth of $NANO\n🎯 Estimated: *$${(parseFloat(testAmount) * 3700).toFixed(2)} → ${nanoAmount} $NANO*`;
 
-  await bot.sendMessage(CHAT_ID, message, { parse_mode: 'Markdown' });
-  console.log(`✅ Sent test buy: ${ethAmount} ETH`);
+  await bot.sendMessage(CHAT_ID, testMessage, { parse_mode: 'Markdown' });
+  console.log("✅ Test buy triggered.");
 });
 
-async function monitorBuys() {
-  const currentBlock = await web3.eth.getBlockNumber();
-
-  if (lastBlock === 0) {
-    lastBlock = currentBlock - 1;
-  }
-
-  const events = await web3.eth.getPastLogs({
-    fromBlock: lastBlock + 1,
-    toBlock: currentBlock,
-    address: CONTRACT_ADDRESS,
-    topics: []
-  });
-
-  for (const event of events) {
-    const tx = await web3.eth.getTransaction(event.transactionHash);
-    if (!tx || !tx.to) continue;
-
-    if (tx.to.toLowerCase() === CONTRACT_ADDRESS) {
-      const ethAmount = web3.utils.fromWei(tx.value, 'ether');
-      const usdPrice = await getEthPrice();
-      const usdAmount = (parseFloat(ethAmount) * usdPrice).toFixed(2);
-
-      const message = `🚀 *New Buy*\n👤 [${tx.from}](https://etherscan.io/address/${tx.from})\n💰 *${ethAmount} ETH* (~$${usdAmount}) worth of $NANO`;
-
-      await bot.sendMessage(CHAT_ID, message, { parse_mode: 'Markdown' });
-      console.log(`✅ Detected buy: ${ethAmount} ETH from ${tx.from}`);
-    }
-  }
-
-  lastBlock = currentBlock;
-}
-
-async function getEthPrice() {
+// === MONITOR NEW BUYS ===
+async function checkNewBuys() {
   try {
-    const res = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
-    return res.data.ethereum.usd;
+    const latestBlock = await web3.eth.getBlockNumber();
+
+    if (!lastCheckedBlock) {
+      lastCheckedBlock = latestBlock - 5;
+    }
+
+    for (let i = lastCheckedBlock + 1; i <= latestBlock; i++) {
+      const block = await web3.eth.getBlock(i, true);
+      if (!block || !block.transactions) continue;
+
+      for (const tx of block.transactions) {
+        if (tx.to && tx.to.toLowerCase() === CONTRACT_ADDRESS.toLowerCase()) {
+          const ethAmount = web3.utils.fromWei(tx.value, 'ether');
+          const usdValue = (parseFloat(ethAmount) * 3700).toFixed(2);
+          const nanoAmount = (parseFloat(usdValue) / 0.00075).toFixed(2);
+
+          const msg = `🚀 *New Buy:*\n👤 [${tx.from}](https://etherscan.io/address/${tx.from})\n💰 *${ethAmount} ETH* worth of $NANO\n🎯 Estimated: *$${usdValue} → ${nanoAmount} $NANO*`;
+
+          await bot.sendMessage(CHAT_ID, msg, { parse_mode: 'Markdown' });
+          console.log(`✅ Buy alert: ${ethAmount} ETH`);
+        }
+      }
+    }
+
+    lastCheckedBlock = latestBlock;
   } catch (err) {
-    console.error("❌ Failed to fetch ETH price", err);
-    return 0;
+    console.error('❌ Error checking buys:', err);
   }
 }
 
-setInterval(monitorBuys, 8000);
-
-console.log("🟢 Nanora Buy Bot is LIVE...");
+// === START MONITORING ===
+setInterval(checkNewBuys, 15000);
+console.log('🟢 Nanora Buy Bot is LIVE...');
