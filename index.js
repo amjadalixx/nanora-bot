@@ -19,15 +19,24 @@ bot.on('message', (msg) => {
 });
 
 // === /testbuy command ===
-bot.onText(/\/testbuy (\d+(\.\d+)?)/, async (msg, match) => {
+// === /testbuy [any number] command ===
+bot.onText(/\/testbuy (.+)/, async (msg, match) => {
   const testAmount = match[1];
+
+  // Validate it's a number
+  if (isNaN(testAmount)) {
+    return bot.sendMessage(msg.chat.id, "❌ Please provide a valid number.\nExample: /testbuy 1.5");
+  }
+
+  const ethAmount = parseFloat(testAmount);
+  const usdValue = (ethAmount * 3700).toFixed(2);
+  const nanoAmount = (usdValue / 0.00075).toFixed(2);
   const testFrom = "0xTESTWALLET1234567890abcdef";
-  const nanoAmount = (parseFloat(testAmount) * 3700 / 0.00075).toFixed(2);
 
-  const testMessage = `🚀 *New Buy:*\n👤 [${testFrom}](https://etherscan.io/address/${testFrom})\n💰 *${testAmount} ETH* worth of $NANO\n🎯 Estimated: *$${(parseFloat(testAmount) * 3700).toFixed(2)} → ${nanoAmount} $NANO*`;
+  const message = `🚀 *New Buy (Test):*\n👤 [${testFrom}](https://etherscan.io/address/${testFrom})\n💰 *${ethAmount} ETH* worth of $NANO\n🎯 Estimated: *$${usdValue} → ${nanoAmount} $NANO*`;
 
-  await bot.sendMessage(CHAT_ID, testMessage, { parse_mode: 'Markdown' });
-  console.log("✅ Test buy triggered with", testAmount, "ETH");
+  await bot.sendMessage(CHAT_ID, message, { parse_mode: 'Markdown' });
+  console.log(`✅ Sent test buy: ${ethAmount} ETH`);
 });
 
 // === MONITOR NEW BUYS ===
