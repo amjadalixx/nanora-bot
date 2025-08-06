@@ -19,7 +19,17 @@ bot.on('message', (msg) => {
     console.log(`💬 Keep-alive from group activity: ${msg.text.slice(0, 30)}...`);
   }
 });
+// === TEST BUY COMMAND ===
+bot.onText(/\/testbuy/, async (msg) => {
+  const testFrom = "0xTESTWALLET1234567890abcdef";
+  const testAmount = "0.3";
+  const nanoAmount = (parseFloat(testAmount) * 3700 / 0.00075).toFixed(2); // assuming $1 = 0.00075 NANO
 
+  const testMessage = `🚀 *New Buy:*\n👤 [${testFrom}](https://etherscan.io/address/${testFrom})\n💰 *${testAmount} ETH* worth of $NANO\n🎯 Estimated: *$${(parseFloat(testAmount) * 3700).toFixed(2)} → ${nanoAmount} $NANO*`;
+
+  await bot.sendMessage(CHAT_ID, testMessage, { parse_mode: 'Markdown' });
+  console.log("✅ Test buy triggered.");
+});
 // === Monitor ETH Buys to the Presale Contract ===
 async function checkNewBuys() {
   try {
