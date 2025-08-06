@@ -19,15 +19,15 @@ bot.on('message', (msg) => {
 });
 
 // === /testbuy command ===
-bot.onText(/\/testbuy/, async (msg) => {
+bot.onText(/\/testbuy (\d+(\.\d+)?)/, async (msg, match) => {
+  const testAmount = match[1];
   const testFrom = "0xTESTWALLET1234567890abcdef";
-  const testAmount = "0.003";
   const nanoAmount = (parseFloat(testAmount) * 3700 / 0.00075).toFixed(2);
 
   const testMessage = `🚀 *New Buy:*\n👤 [${testFrom}](https://etherscan.io/address/${testFrom})\n💰 *${testAmount} ETH* worth of $NANO\n🎯 Estimated: *$${(parseFloat(testAmount) * 3700).toFixed(2)} → ${nanoAmount} $NANO*`;
 
   await bot.sendMessage(CHAT_ID, testMessage, { parse_mode: 'Markdown' });
-  console.log("✅ Test buy triggered.");
+  console.log("✅ Test buy triggered with", testAmount, "ETH");
 });
 
 // === MONITOR NEW BUYS ===
