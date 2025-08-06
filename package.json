@@ -1,7 +1,7 @@
 {
   "name": "nanora-bot",
   "version": "1.0.0",
-  "description": "Telegram buy bot for Nanora",
+  "description": "",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -9,6 +9,6 @@
   "dependencies": {
     "dotenv": "^16.3.1",
     "node-telegram-bot-api": "^0.61.0",
-    "web3": "^4.4.0"
+    "web3": "^1.10.0"
   }
 }
